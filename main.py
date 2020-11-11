@@ -29,7 +29,7 @@ def getSitePossibleLibList(url):
 
         if lib.endswith(".min"):
             if ver is None:
-                version = "min"
+                ver = "min"
 
             lib = lib[:-4]
 
@@ -65,10 +65,10 @@ def findCpe(lib):
             else:
                 ver = None
 
-        if name.find(".") > 0:
+        if name is not None and name.find(".") > 0:
             name = ".".join((name.split(".")[:-1]))
-        elif ver.find("-") > 0:
-            name = "-".join((name.split("-")[:-1]))
+        elif ver is not None and ver.find("-") > 0:
+            ver = "-".join((name.split("-")[:-1]))
         else:
             return None
 
