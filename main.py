@@ -9,8 +9,6 @@ def extractUrlData(url):
     return [baseUrl, basePathUrl]
 
 def getSiteScriptList(url):
-    baseUrl = extractUrlData(url)
-
     page = requests.get(url)
     scripts = re.findall(r'<script[^>]+>\s*</script>', page.text)
 
@@ -23,15 +21,26 @@ def getSiteScriptList(url):
 
         scriptUrl = lib.group()
         if scriptUrl.startswith("."):
-            scriptUrl = "%s%s" % (baseUrl[1], scriptUrl)
+            scriptUrl = urllib.parse.urljoin(url, scriptUrl)
 
         output.append(scriptUrl)
 
     return output
 
-list = getSiteScriptList("https://s.student.pwr.edu.pl/iwc_static/c11n/login_student_pwr_edu_pl.html?lang=pl&3.0.1.3.0_16070546&svcs=abs,mail,calendar,c11n")
+def extractLibData(url):
+    return extractLibDataFromUrl(url)
+
+def extractLibDataFromUrl(url):
+    versions = re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url)
+    print(url, versions)
+
+    return None
+
+#list = getSiteScriptList("https://s.student.pwr.edu.pl/iwc_static/c11n/login_student_pwr_edu_pl.html?lang=pl&3.0.1.3.0_16070546&svcs=abs,mail,calendar,c11n")
 #list = getSiteScriptList("https://stronylabaz.pl")
 
+list = ["https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js", "https://s.student.pwr.edu.pl/iwc_static/c11n/js/bootstrap.js","https://s.student.pwr.edu.pl/iwc_static/js/dojotoolkit/dojo/dojo.js?3.0.1.3.0_16070546"]
+
 for i in list:
-    print(i)
+    extractLibData(i)
 
