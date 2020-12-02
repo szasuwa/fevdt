@@ -24,7 +24,8 @@ lib_name_blacklist = [
     'build',
     '^.$',
     '_inc',
-    'ajax'
+    'ajax',
+    'cookies'
 ]
 
 url_framework = {
@@ -117,8 +118,15 @@ def extract_possible_names(url):
 
 def extract_lib_data_from_url(url):
     primary_name = re.sub("([.-]min)|(\.js)|(\?\S+)", "", url.split("/")[-1])
-    versions = re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url)
-    possible_names = extract_possible_names(url)
+    versions = set(re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url))
+
+    tmp = re.match(r'(\S+)-(\d+(?:\.\d+)*)', primary_name)
+    if tmp is not None:
+        tmp = tmp.groups()
+        primary_name = tmp[0]
+        versions.add(tmp[1])
+
+    possible_names = set(extract_possible_names(url))
     return {"url": url, "primary_name": primary_name, "versions": versions, "secondary_names": possible_names}
 
 
