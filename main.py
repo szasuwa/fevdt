@@ -1,5 +1,6 @@
 import requests
 import re
+from bs4 import BeautifulSoup
 import math
 import csv
 import xlsxwriter
@@ -62,13 +63,13 @@ def get_site_script_list(url):
     return output
 
 
-def filter_script_list(list):
+def filter_script_list(url_list):
     if len(url_blacklist) <= 0 and len(url_framework) <= 0:
         return list
 
     output_url = []
     output_fwk = set()
-    for url in list:
+    for url in url_list:
         if len(url_blacklist) > 0 and re.search(url_blacklist_regex, url) is not None:
             continue
 
@@ -194,6 +195,18 @@ def has_valid_cpe(library, version):
     return result > 0
 
 
+def filter_valid_cpe(url_list):
+    output = []
+    for url in url_list:
+        extracted = extract_lib_data(url)
+        tmp = find_cpe(extracted)
+
+        if tmp is not None:
+            output.append(tmp)
+
+    return output
+
+
 def fetch_nvd_page(query):
     output = []
     idx_max = 1
@@ -240,41 +253,43 @@ def export_to_csv(filename, tab):
             worksheet.write_row(row_num, 0, data)
 
 
-url_list = ["https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js",
-            "https://s.student.pwr.edu.pl/iwc_static/c11n/js/bootstrap.js",
-            "https://s.student.pwr.edu.pl/iwc_static/js/dojotoolkit/dojo/dojo.js?3.0.1.3.0_16070546",
-            "https://www.stronylabaz.pl/wp-content/plugins/cookie-notice/js/front.min.js?ver=1.3.2",
-            "https://c0.wp.com/c/5.5.3/wp-includes/js/jquery/jquery.js",
-            "https://www.stronylabaz.pl/wp-content/plugins/revslider/public/assets/js/rbtools.min.js?ver=6.2.23",
-            "https://www.stronylabaz.pl/wp-content/plugins/revslider/public/assets/js/rs6.min.js?ver=6.2.23",
-            "https://c0.wp.com/p/jetpack/9.0.2/_inc/build/photon/photon.min.js",
-            "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/mcw_fp_js-vb00bca612da7bafe0e2bbef1cd7c3d8955c5a003.js",
-            "https://www.google.com/recaptcha/api.js?render=6LcBlvUUAAAAAMBggM51EaDhc_hKGjSHtoDNjfx1&#038;ver=3.0",
-            "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/wpcf7-recaptcha-vd046ebdf801d8c73a1c6d7a5e6f13365826058d6.js",
-            "https://www.stronylabaz.pl/wp-content/themes/page-builder-framework/js/min/site-min.js?ver=2.5.9",
-            "https://www.stronylabaz.pl/wp-content/plugins/js_composer/assets/js/dist/js_composer_front.min.js?ver=6.4.1",
-            "https://www.stronylabaz.pl/wp-content/plugins/js_composer/assets/lib/vc_waypoints/vc-waypoints.min.js?ver=6.4.1",
-            "https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.compatibility.min.js?ver=1",
-            "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/smart-sections-vb840001bc8643d11a20dcc548966140ca9a3f96f.js",
-            "https://www.stronylabaz.pl/wp-content/plugins/visucom-smart-sections/assets/js/salvattore.min.js?ver=1",
-            "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/loop-v3968f667e26e85069ef909a6c3f0135f11f7c777.js",
-            "https://stats.wp.com/e-202046.js"]
+def analyze_url(url):
+#    detected = get_site_script_list(url)
+    detected = ["https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js",
+                "https://s.student.pwr.edu.pl/iwc_static/c11n/js/bootstrap.js",
+                "https://s.student.pwr.edu.pl/iwc_static/js/dojotoolkit/dojo/dojo.js?3.0.1.3.0_16070546",
+                "https://www.stronylabaz.pl/wp-content/plugins/cookie-notice/js/front.min.js?ver=1.3.2",
+                "https://c0.wp.com/c/5.5.3/wp-includes/js/jquery/jquery.js",
+                "https://www.stronylabaz.pl/wp-content/plugins/revslider/public/assets/js/rbtools.min.js?ver=6.2.23",
+                "https://www.stronylabaz.pl/wp-content/plugins/revslider/public/assets/js/rs6.min.js?ver=6.2.23",
+                "https://c0.wp.com/p/jetpack/9.0.2/_inc/build/photon/photon.min.js",
+                "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/mcw_fp_js-vb00bca612da7bafe0e2bbef1cd7c3d8955c5a003.js",
+                "https://www.google.com/recaptcha/api.js?render=6LcBlvUUAAAAAMBggM51EaDhc_hKGjSHtoDNjfx1&#038;ver=3.0",
+                "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/wpcf7-recaptcha-vd046ebdf801d8c73a1c6d7a5e6f13365826058d6.js",
+                "https://www.stronylabaz.pl/wp-content/themes/page-builder-framework/js/min/site-min.js?ver=2.5.9",
+                "https://www.stronylabaz.pl/wp-content/plugins/js_composer/assets/js/dist/js_composer_front.min.js?ver=6.4.1",
+                "https://www.stronylabaz.pl/wp-content/plugins/js_composer/assets/lib/vc_waypoints/vc-waypoints.min.js?ver=6.4.1",
+                "https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.compatibility.min.js?ver=1",
+                "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/smart-sections-vb840001bc8643d11a20dcc548966140ca9a3f96f.js",
+                "https://www.stronylabaz.pl/wp-content/plugins/visucom-smart-sections/assets/js/salvattore.min.js?ver=1",
+                "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/loop-v3968f667e26e85069ef909a6c3f0135f11f7c777.js",
+                "https://stats.wp.com/e-202046.js"]
 
-detected_libs = filter_script_list(url_list)
+    detected = filter_script_list(detected)
+    cpe_list = filter_valid_cpe(detected["urls"])
 
-for fwk in detected_libs["frameworks"]:
-    print("--- Framework detected ---")
-    print("Framework: ", fwk)
+    nvd = {"libraries": {}, "frameworks": {}}
 
-for i in detected_libs["urls"]:
-    x = extract_lib_data(i)
+    for cpe in cpe_list:
+        nvd["libraries"][cpe["name"]] = fetch_nvd_page(cpe["cpe"])
 
-    print("--- Result ---")
-    print("Url:", x["url"])
-    print("Primary Name: ", x["primary_name"])
-    print("Versions: ", x["versions"])
-    print("Path names: ", x["secondary_names"])
-    print("CPE:", find_cpe(x))
+    for framework in detected["frameworks"]:
+        nvd["frameworks"][framework] = fetch_nvd_page(framework)
+
+    print(nvd)
+    #TODO: Output and saving
+
+analyze_url("")
 
 #tmp = fetch_nvd_page("cpe:2.3:*:*:jquery:2.1.4")
 #print(len(tmp))
