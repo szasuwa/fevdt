@@ -30,6 +30,40 @@ def get_site_script_list(url):
     return output
 
 
+def filter_script_list(list, blacklist, framework):
+    if len(blacklist) <= 0 and len(framework) <= 0:
+        return list
+
+    if len(blacklist) > 0:
+        blacklist_regex = r'(%s)' % (")|(".join(blacklist))
+
+    output_url = []
+    output_fwk = set()
+    for url in list:
+        if len(blacklist) > 0 and re.search(blacklist_regex, url) is not None:
+            continue
+
+        found_framework = False
+        ignore_framework = False
+        for fwk in framework:
+            if found_framework is True:
+                break
+
+            for fwk_re in framework[fwk]:
+                if re.search(fwk_re, url) is not None:
+                    output_fwk.add(fwk)
+                    found_framework = True
+                    ignore_framework = framework[fwk][fwk_re]
+                    break
+
+        if found_framework is True and ignore_framework is True:
+            continue
+
+        output_url.append(url)
+
+    return [output_url, output_fwk]
+
+
 def extract_lib_data(url):
     return extract_lib_data_from_url(url)
 
@@ -61,7 +95,26 @@ url_list = ["https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js",
             "https://www.stronylabaz.pl/wp-content/cache/asset-cleanup/js/item/loop-v3968f667e26e85069ef909a6c3f0135f11f7c777.js",
             "https://stats.wp.com/e-202046.js"]
 
-for i in url_list:
+blacklist = [
+    #Regex
+    "/www.google.com/"
+]
+
+framework = {
+    # "framework" : { "regex": remove_from_urls }
+    "wordpress": {
+        "wp-content": True,
+        "wp-includes": False
+    }
+}
+
+detected_libs = filter_script_list(url_list, blacklist, framework)
+
+for i in detected_libs[1]:
+    print("--- Framework detected ---")
+    print("Framework: ", i)
+
+for i in detected_libs[0]:
     x = extract_lib_data(i)
 
     print("--- Result ---")
