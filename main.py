@@ -87,7 +87,7 @@ def filter_script_list(list):
 
         output_url.append(url)
 
-    return [output_url, output_fwk]
+    return {"urls": output_url, "frameworks": output_fwk}
 
 
 def extract_lib_data(url):
@@ -115,7 +115,7 @@ def extract_lib_data_from_url(url):
     primary_name = re.sub("([.-]min)|(\.js)|(\?\S+)", "", url.split("/")[-1])
     versions = re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url)
     possible_names = extract_possible_names(url)
-    return [url, primary_name, versions, possible_names]
+    return {"url": url, "primary_name": primary_name, "versions": versions, "secondary_names": possible_names}
 
 
 def find_library_cpe_version(library, version):
@@ -146,31 +146,34 @@ def find_best_library_cpe(library, version):
         if len(best_version) < len(i):
             best_version = i
 
-    return [library, best_version]
+    return {"name": library, "version": best_version}
+
 
 def find_cpe(result):
-    tmp = find_best_library_cpe(result[1], result[2])
+    tmp = find_best_library_cpe(result["primary_name"], result["versions"])
 
     if tmp is not None:
-        return [tmp[0], ".".join(tmp[1]), build_cpe_string(tmp[0], ".".join(tmp[1]))]
+        tmp2 = ".".join(tmp["version"]) if len(tmp["version"]) > 0 else None
+        return {"name": tmp["name"], "version": tmp2, "cpe": build_cpe_string(tmp["name"], tmp2)}
 
     possible_cpe = []
-    for path_name in result[3]:
-        tmp = find_best_library_cpe(path_name, result[2])
+    for path_name in result["secondary_names"]:
+        tmp = find_best_library_cpe(path_name, result["versions"])
 
         if tmp is not None:
             possible_cpe.append(tmp)
 
-    best_possible_cpe = [None, []]
+    best_possible_cpe = {"name": None, "version": []}
 
     for i in possible_cpe:
-        if len(best_possible_cpe[1]) < len(i[1]):
+        if len(best_possible_cpe["version"]) < len(i["version"]):
             best_possible_cpe = i
 
-    if best_possible_cpe[0] is None:
+    if best_possible_cpe["name"] is None:
         return None
     else:
-        return [best_possible_cpe[0], ".".join(best_possible_cpe[1]), build_cpe_string(best_possible_cpe[0], ".".join(best_possible_cpe[1]))]
+        tmp2 = ".".join(best_possible_cpe["version"]) if len(best_possible_cpe["version"]) > 0 else None
+        return {"name": best_possible_cpe["name"], "version": tmp2, "cpe": build_cpe_string(best_possible_cpe["name"], tmp2)}
 
 
 def build_cpe_string(library, version):
@@ -210,16 +213,16 @@ url_list = ["https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js",
 
 detected_libs = filter_script_list(url_list)
 
-for i in detected_libs[1]:
+for fwk in detected_libs["frameworks"]:
     print("--- Framework detected ---")
-    print("Framework: ", i)
+    print("Framework: ", fwk)
 
-for i in detected_libs[0]:
+for i in detected_libs["urls"]:
     x = extract_lib_data(i)
 
     print("--- Result ---")
-    print("Url:", x[0])
-    print("Primary Name: ", x[1])
-    print("Versions: ", x[2])
-    print("Path names: ", x[3])
+    print("Url:", x["url"])
+    print("Primary Name: ", x["primary_name"])
+    print("Versions: ", x["versions"])
+    print("Path names: ", x["secondary_names"])
     print("CPE:", find_cpe(x))
