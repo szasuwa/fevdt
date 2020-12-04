@@ -3,6 +3,7 @@ import re
 from bs4 import BeautifulSoup
 import xlsxwriter
 import urllib.parse
+import validators
 
 url_blacklist = [
     # Regex
@@ -36,21 +37,14 @@ url_framework = {
 }
 
 
-def extract_url_data(url):
-    parsed = urllib.parse.urlparse(url)
-    base_url = "%s://%s/" % (parsed.scheme, parsed.netloc)
-    base_path_url = "%s://%s%s/" % (parsed.scheme, parsed.netloc, "/".join(parsed.path.split("/")[:-1]))
-    return [base_url, base_path_url]
-
-
 def get_site_script_list(url):
     page = requests.get(url)
+    print("Searching for list of libraries")
     scripts = re.findall(r'<script[^>]+>\s*</script>', page.text)
 
     output = []
     for script in scripts:
         lib = re.search(r'(?<=src=[\'\"])[^\"]+(\.js)[^\'\"]*', script)
-
         if lib is None:
             continue
 
@@ -59,11 +53,12 @@ def get_site_script_list(url):
             script_url = urllib.parse.urljoin(url, script_url)
 
         output.append(script_url)
-
+    print(str(len(output)) + " libraries found")
     return output
 
 
 def filter_script_list(url_list):
+    print("\n" + " Filtering black list")
     if len(url_blacklist) <= 0 and len(url_framework) <= 0:
         return list
 
@@ -90,7 +85,7 @@ def filter_script_list(url_list):
             continue
 
         output_url.append(url)
-
+    print(str(len(output_url)) + "libraries after blacklist filtering")
     return {"urls": output_url, "frameworks": output_fwk}
 
 
@@ -207,13 +202,13 @@ def has_valid_cpe(library, version):
 
 def filter_valid_cpe(url_list):
     output = []
+    print("\nChecking CPE validity...")
     for url in url_list:
         extracted = extract_lib_data(url)
         tmp = find_cpe(extracted)
 
         if tmp is not None:
             output.append(tmp)
-
     return output
 
 
@@ -231,6 +226,7 @@ def fetch_nvd_page(query):
         idx_current = int(
             (re.search(r'(?<=data-testid="vuln-displaying-count-through">)\d+[,]?\d*', site.text).group()).replace(",",
                                                                                                                    ""))
+        print("Fetching NVD... (%i of %i)" % (idx_current, idx_max))
         output += parse_nvd_page(site.text)
     return output
 
@@ -257,6 +253,8 @@ def parse_nvd_page(page):
 
 
 def export_results(results, filename):
+    print("\nExporting results… (%s)" % filename)
+
     worksheets = {
         "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0",
                            "Severity 2.0"]],
@@ -303,31 +301,40 @@ def analyze_url(url):
 
     nvd = {"libraries": {"version_detected": {}, "version_unknown": {"basic": {}, "extended": {}}}, "frameworks": {}}
 
+    print("\nFetching NVD for libraries...")
     for cpe in cpe_list:
         if cpe["version"] is None:
+            print("Fetching NVD for %s..." % cpe["cpe"])
             nvd["libraries"]["version_unknown"]["basic"][cpe["name"]] = (fetch_nvd_page(cpe["cpe"]))
+            print("Fetching NVD for %s..." % cpe["name"])
             nvd["libraries"]["version_unknown"]["extended"][cpe["name"]] = (fetch_nvd_page(cpe["name"]))
         else:
+            print("Fetching NVD for %s..." % cpe["cpe"])
             nvd["libraries"]["version_detected"]["%s-%s" % (cpe["name"], cpe["version"])] = (fetch_nvd_page(cpe["cpe"]))
 
+    print("\nFetching NVD for frameworks...")
     for framework in detected["frameworks"]:
-        print(framework)
+        print("Fetching NVD for %s..." % framework)
         nvd["frameworks"][framework] = fetch_nvd_page(framework)
 
     export_results(nvd, "result")
 
 
-def geturl():
-    print(" ________  _______    ___      ___  ________   _________   ")
-    print("|\  _____\|\  ___ \  |\  \    /  /||\   ___ \ |\___   ___\ ")
-    print("\ \  \__/ \ \   __/| \ \  \  /  / /\ \  \_|\ \\|___ \  \_| ")
-    print(" \ \   __\ \ \  \_|/__\ \  \/  / /  \ \  \ \\ \    \ \  |")
-    print("   \ \  \_|  \ \  \_|\ \\ \    / /    \ \  \_\\ \    \ \  \ ")
-    print("   \ \__\    \ \_______\\ \__/ /      \ \_______\    \ \__\ ")
-    print("    \|__|     \|_______| \|__|/        \|_______|     \|__|\ ")
-    tmp = input("Give me URL:")
-    return tmp
+def user_interface():
+    print(" ________  ________  ____   ____  ______    _________  ")
+    print("|_   __  ||_   __  ||_  _| |_  _||_   _ `. |  _   _  |")
+    print("  | |_ \_|  | |_ \_|  \ \   / /    | | `. \|_/ | | \_| ")
+    print("  |  _|     |  _| _    \ \ / /     | |  | |    | |  ")
+    print(" _| |_     _| |__/ |    \ ' /     _| |_.' /   _| |_   ")
+    print("|_____|   |________|     \_/     |______.'   |_____| ")
+    print("------------------------------------------------------")
+    print("Made by:")
+    print("Sebastian Zasuwa (sebastianzasuwa@gmail.com)")
+    print("Bartosz Sochacki (bartek.sochacki26@gmail.com)\n")
+    url = ""
+    while not validators.url(url):
+        url = input("Give me URL: ")
+    analyze_url(url)
 
 
-url = geturl()
-analyze_url(url)
+user_interface()
