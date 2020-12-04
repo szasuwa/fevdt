@@ -321,16 +321,17 @@ def analyze_url(url):
 
 
 def user_interface():
-    print(" ________  ________  ____   ____  ______    _________  ")
-    print("|_   __  ||_   __  ||_  _| |_  _||_   _ `. |  _   _  |")
-    print("  | |_ \_|  | |_ \_|  \ \   / /    | | `. \|_/ | | \_| ")
-    print("  |  _|     |  _| _    \ \ / /     | |  | |    | |  ")
-    print(" _| |_     _| |__/ |    \ ' /     _| |_.' /   _| |_   ")
-    print("|_____|   |________|     \_/     |______.'   |_____| ")
     print("------------------------------------------------------")
-    print("Made by:")
+    print(" ________  ________  ____   ____  ______    _________ ")
+    print("|_   __  ||_   __  ||_  _| |_  _||_   _ `. |  _   _  |")
+    print("  | |_ \_|  | |_ \_|  \ \   / /    | | `. \|_/ | | \_|")
+    print("  |  _|     |  _| _    \ \ / /     | |  | |    | |    ")
+    print(" _| |_     _| |__/ |    \ ' /     _| |_.' /   _| |_   ")
+    print("|_____|   |________|     \_/     |______.'   |_____|  ")
+    print("Made in 2020 by:")
     print("Sebastian Zasuwa (sebastianzasuwa@gmail.com)")
-    print("Bartosz Sochacki (bartek.sochacki26@gmail.com)\n")
+    print("Bartosz Sochacki (bartek.sochacki26@gmail.com)")
+    print("------------------------------------------------------")
     url = ""
     while not validators.url(url):
         url = input("Give me URL: ")
