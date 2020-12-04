@@ -1,8 +1,6 @@
 import requests
 import re
 from bs4 import BeautifulSoup
-import math
-import csv
 import xlsxwriter
 import urllib.parse
 
@@ -96,10 +94,6 @@ def filter_script_list(url_list):
     return {"urls": output_url, "frameworks": output_fwk}
 
 
-def extract_lib_data(url):
-    return extract_lib_data_from_url(url)
-
-
 def extract_possible_names(url):
     if len(lib_name_blacklist) <= 0:
         return reversed(url.split("/")[3:-1])
@@ -117,7 +111,7 @@ def extract_possible_names(url):
     return output
 
 
-def extract_lib_data_from_url(url):
+def extract_lib_data(url):
     primary_name = re.sub("([.-]min)|(\.js)|(\?\S+)", "", url.split("/")[-1])
     versions = set(re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url))
 
@@ -258,38 +252,39 @@ def parse_nvd_page(page):
 
 
 def export_results(results, filename):
-    nvd = {"library_version": [], "library_unknown": [], "framework": []}
+    worksheets = {
+        "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+        "basic_unknown_versions": [["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+        "extended_unknown_versions": [["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+        "frameworks": [["Framework Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]]
+    }
 
-    for library in results["libraries"]:
+    for library in results["libraries"]["version_detected"]:
         lib_info = library.split("-")
+        for vulnerability in results["libraries"]["version_detected"][library]:
+            worksheets["with_versions"].append(lib_info + vulnerability)
 
-        if lib_info[1] == "None":
-            for vulnerability in results["libraries"][library]:
-                nvd["library_unknown"].append(lib_info + vulnerability)
-        else:
-            for vulnerability in results["libraries"][library]:
-                nvd["library_version"].append(lib_info + vulnerability)
+    for library in results["libraries"]["version_unknown"]["basic"]:
+        for vulnerability in results["libraries"]["version_unknown"]["basic"][library]:
+            worksheets["basic_unknown_versions"].append([library] + vulnerability)
+
+    for library in results["libraries"]["version_unknown"]["extended"]:
+        for vulnerability in results["libraries"]["version_unknown"]["extended"][library]:
+            worksheets["extended_unknown_versions"].append([library] + vulnerability)
 
     for framework in results["frameworks"]:
         for vulnerability in results["frameworks"][framework]:
-            nvd["framework"].append([framework] + vulnerability)
+            worksheets["frameworks"].append([framework] + vulnerability)
 
-    export_to_csv("%s_library_version" % filename, nvd["library_version"], ["Library Name", "Library Version"])
-    export_to_csv("%s_library_unknown" % filename, nvd["library_unknown"], ["Library Name", "Library Version"])
-    export_to_csv("%s_framework" % filename, nvd["framework"], ["Framework Name"])
-
-
-def export_to_csv(filename, tab, extra_title_rows=None):
-    if extra_title_rows is None:
-        row = ["CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]
-    else:
-        row = extra_title_rows + ["CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]
-
-    tab.insert(0, row)
     with xlsxwriter.Workbook(filename + '.xlsx') as workbook:
-        worksheet = workbook.add_worksheet()
-        for row_num, data in enumerate(tab):
-            worksheet.write_row(row_num, 0, data)
+        for worksheet_name in worksheets:
+            worksheet = workbook.add_worksheet(worksheet_name)
+
+            for row_num, data in enumerate(worksheets[worksheet_name]):
+                worksheet.write_row(row_num, 0, data)
+
+            if len(worksheets[worksheet_name]) > 1:
+                worksheet.autofilter(0, 0, len(worksheets[worksheet_name]) - 1, len(worksheets[worksheet_name][0]) - 1)
 
 
 def analyze_url(url):
@@ -298,10 +293,14 @@ def analyze_url(url):
     detected = filter_script_list(detected)
     cpe_list = filter_valid_cpe(detected["urls"])
 
-    nvd = {"libraries": {}, "frameworks": {}}
+    nvd = {"libraries": {"version_detected": {}, "version_unknown": {"basic": {}, "extended": {}}}, "frameworks": {}}
 
     for cpe in cpe_list:
-        nvd["libraries"]["%s-%s" % (cpe["name"], cpe["version"])] = fetch_nvd_page(cpe["cpe"])
+        if cpe["version"] is None:
+            nvd["libraries"]["version_unknown"]["basic"][cpe["name"]] = (fetch_nvd_page(cpe["cpe"]))
+            nvd["libraries"]["version_unknown"]["extended"][cpe["name"]] = (fetch_nvd_page(cpe["name"]))
+        else:
+            nvd["libraries"]["version_detected"]["%s-%s" % (cpe["name"], cpe["version"])] = (fetch_nvd_page(cpe["cpe"]))
 
     for framework in detected["frameworks"]:
         nvd["frameworks"][framework] = fetch_nvd_page(framework)
@@ -310,9 +309,3 @@ def analyze_url(url):
 
 
 analyze_url("http://pwr.edu.pl")
-
-# tmp = fetch_nvd_page("cpe:2.3:*:*:jquery:2.1.4")
-# print(len(tmp))
-# for x in tmp:
-#     print(x)
-# export_to_csv("testFile", tmp)
