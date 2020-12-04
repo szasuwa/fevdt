@@ -185,7 +185,8 @@ def find_cpe(result):
         return None
     else:
         tmp2 = ".".join(best_possible_cpe["version"]) if len(best_possible_cpe["version"]) > 0 else None
-        return {"name": best_possible_cpe["name"], "version": tmp2, "cpe": build_cpe_string(best_possible_cpe["name"], tmp2)}
+        return {"name": best_possible_cpe["name"], "version": tmp2,
+                "cpe": build_cpe_string(best_possible_cpe["name"], tmp2)}
 
 
 def build_cpe_string(library, version):
@@ -197,7 +198,8 @@ def build_cpe_string(library, version):
 
 
 def has_valid_cpe(library, version):
-    url = 'https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=%s' % (build_cpe_string(library, version))
+    url = 'https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=%s' % (
+        build_cpe_string(library, version))
     site = requests.get(url)
     result = int(re.search(r'(?<=data-testid="cpe-matching-records-count">)\d+', site.text).group())
     return result > 0
@@ -224,8 +226,11 @@ def fetch_nvd_page(query):
     while idx_current < idx_max:
         url = 'https://nvd.nist.gov/vuln/search/results?query=%s&startIndex=%i' % (safe_query, idx_current)
         site = requests.get(url)
-        idx_max = int(re.search(r'(?<=data-testid="vuln-matching-records-count">)\d+[,]?\d*', site.text).group().replace(",", ""))
-        idx_current = int((re.search(r'(?<=data-testid="vuln-displaying-count-through">)\d+[,]?\d*', site.text).group()).replace(",", ""))
+        idx_max = int(
+            re.search(r'(?<=data-testid="vuln-matching-records-count">)\d+[,]?\d*', site.text).group().replace(",", ""))
+        idx_current = int(
+            (re.search(r'(?<=data-testid="vuln-displaying-count-through">)\d+[,]?\d*', site.text).group()).replace(",",
+                                                                                                                   ""))
         output += parse_nvd_page(site.text)
     return output
 
@@ -253,9 +258,12 @@ def parse_nvd_page(page):
 
 def export_results(results, filename):
     worksheets = {
-        "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
-        "basic_unknown_versions": [["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
-        "extended_unknown_versions": [["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+        "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0",
+                           "Severity 2.0"]],
+        "basic_unknown_versions": [
+            ["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+        "extended_unknown_versions": [
+            ["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
         "frameworks": [["Framework Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]]
     }
 
@@ -303,9 +311,23 @@ def analyze_url(url):
             nvd["libraries"]["version_detected"]["%s-%s" % (cpe["name"], cpe["version"])] = (fetch_nvd_page(cpe["cpe"]))
 
     for framework in detected["frameworks"]:
+        print(framework)
         nvd["frameworks"][framework] = fetch_nvd_page(framework)
 
     export_results(nvd, "result")
 
 
-analyze_url("http://pwr.edu.pl")
+def geturl():
+    print(" ________  _______    ___      ___  ________   _________   ")
+    print("|\  _____\|\  ___ \  |\  \    /  /||\   ___ \ |\___   ___\ ")
+    print("\ \  \__/ \ \   __/| \ \  \  /  / /\ \  \_|\ \\|___ \  \_| ")
+    print(" \ \   __\ \ \  \_|/__\ \  \/  / /  \ \  \ \\ \    \ \  |")
+    print("   \ \  \_|  \ \  \_|\ \\ \    / /    \ \  \_\\ \    \ \  \ ")
+    print("   \ \__\    \ \_______\\ \__/ /      \ \_______\    \ \__\ ")
+    print("    \|__|     \|_______| \|__|/        \|_______|     \|__|\ ")
+    tmp = input("Give me URL:")
+    return tmp
+
+
+url = geturl()
+analyze_url(url)
