@@ -257,8 +257,34 @@ def parse_nvd_page(page):
     return output
 
 
-def export_to_csv(filename, tab):
-    row = ["CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]
+def export_results(results, filename):
+    nvd = {"library_version": [], "library_unknown": [], "framework": []}
+
+    for library in results["libraries"]:
+        lib_info = library.split("-")
+
+        if lib_info[1] == "None":
+            for vulnerability in results["libraries"][library]:
+                nvd["library_unknown"].append(lib_info + vulnerability)
+        else:
+            for vulnerability in results["libraries"][library]:
+                nvd["library_version"].append(lib_info + vulnerability)
+
+    for framework in results["frameworks"]:
+        for vulnerability in results["frameworks"][framework]:
+            nvd["framework"].append([framework] + vulnerability)
+
+    export_to_csv("%s_library_version" % filename, nvd["library_version"], ["Library Name", "Library Version"])
+    export_to_csv("%s_library_unknown" % filename, nvd["library_unknown"], ["Library Name", "Library Version"])
+    export_to_csv("%s_framework" % filename, nvd["framework"], ["Framework Name"])
+
+
+def export_to_csv(filename, tab, extra_title_rows=None):
+    if extra_title_rows is None:
+        row = ["CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]
+    else:
+        row = extra_title_rows + ["CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]
+
     tab.insert(0, row)
     with xlsxwriter.Workbook(filename + '.xlsx') as workbook:
         worksheet = workbook.add_worksheet()
@@ -280,8 +306,7 @@ def analyze_url(url):
     for framework in detected["frameworks"]:
         nvd["frameworks"][framework] = fetch_nvd_page(framework)
 
-    print(nvd)
-    # TODO: Output and saving
+    export_results(nvd, "result")
 
 
 analyze_url("http://pwr.edu.pl")
