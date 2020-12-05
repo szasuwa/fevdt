@@ -38,8 +38,16 @@ url_framework = {
 
 
 def get_site_script_list(url):
-    page = requests.get(url)
-    print("Searching for list of libraries")
+    try:
+        print("Opening page... (%s)" % url)
+        page = requests.get(url)
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.TooManyRedirects):
+        print("Connection Error! Exiting...")
+        exit()
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
+
+    print("Extracting possible libraries list...")
     scripts = re.findall(r'<script[^>]+>\s*</script>', page.text)
 
     output = []
@@ -53,12 +61,12 @@ def get_site_script_list(url):
             script_url = urllib.parse.urljoin(url, script_url)
 
         output.append(script_url)
-    print(str(len(output)) + " libraries found")
+    print("%i libraries found" % len(output))
     return output
 
 
 def filter_script_list(url_list):
-    print("\n" + " Filtering black list")
+    print("\nFiltering black list...")
     if len(url_blacklist) <= 0 and len(url_framework) <= 0:
         return list
 
@@ -85,7 +93,7 @@ def filter_script_list(url_list):
             continue
 
         output_url.append(url)
-    print(str(len(output_url)) + "libraries after blacklist filtering")
+    print("%i possible libraries left after filtering" % len(output_url))
     return {"urls": output_url, "frameworks": output_fwk}
 
 
@@ -253,7 +261,7 @@ def parse_nvd_page(page):
 
 
 def export_results(results, filename):
-    print("\nExporting results… (%s)" % filename)
+    print("\nExporting results... (%s)" % filename)
 
     worksheets = {
         "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0",
@@ -318,6 +326,34 @@ def analyze_url(url):
         nvd["frameworks"][framework] = fetch_nvd_page(framework)
 
     export_results(nvd, "result")
+    print_exit_stats(nvd)
+
+def print_exit_stats(results):
+    stats = { "lib_ver": [0, 0], "lib_unknown": [0, 0, 0], "framework": [0, 0]}
+
+    stats["lib_ver"][0] = len(results["libraries"]["version_detected"])
+    for lib in results["libraries"]["version_detected"]:
+        stats["lib_ver"][1] += len(results["libraries"]["version_detected"][lib])
+
+    stats["lib_unknown"][0] = len(results["libraries"]["version_unknown"])
+    for lib in results["libraries"]["version_unknown"]["basic"]:
+        stats["lib_unknown"][1] += len(results["libraries"]["version_unknown"]["basic"][lib])
+
+    for lib in results["libraries"]["version_unknown"]["extended"]:
+        stats["lib_unknown"][2] += len(results["libraries"]["version_unknown"]["extended"][lib])
+
+    stats["framework"][0] = len(results["frameworks"])
+    for fwk in results["frameworks"]:
+        stats["framework"][1] += len(results["frameworks"][fwk])
+
+    print("\nResults...")
+    print("| %i libraries with version detected" % stats["lib_ver"][0])
+    print("+-> %i vulnerabilities detected" % stats["lib_ver"][1])
+    print("| %i libraries with unknown version detected" % stats["lib_unknown"][0])
+    print("+-> %i vulnerabilities detected (basic mode)" % stats["lib_unknown"][1])
+    print("+-> %i vulnerabilities detected (extended mode)" % stats["lib_unknown"][2])
+    print("| %i frameworks detected" % stats["framework"][0])
+    print("+-> %i vulnerabilities detected" % stats["framework"][1])
 
 
 def user_interface():
