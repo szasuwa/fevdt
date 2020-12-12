@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 import xlsxwriter
 import urllib.parse
 import validators
+import os
+from datetime import datetime
 
 url_blacklist = [
     # Regex
@@ -261,8 +263,8 @@ def parse_nvd_page(page):
 
 
 def export_results(results, filepath, filename):
-    filepath = filepath + "\\" + filename
-    print("\nExporting results... (%s)" % filepath)
+    output_path = "%s\%s.xls" % (filepath, filename)
+    print("\nExporting results... (%s)" % output_path)
 
     worksheets = {
         "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0",
@@ -291,7 +293,7 @@ def export_results(results, filepath, filename):
         for vulnerability in results["frameworks"][framework]:
             worksheets["frameworks"].append([framework] + vulnerability)
 
-    with xlsxwriter.Workbook(filepath + '.xlsx') as workbook:
+    with xlsxwriter.Workbook(output_path) as workbook:
         for worksheet_name in worksheets:
             worksheet = workbook.add_worksheet(worksheet_name)
 
@@ -328,6 +330,7 @@ def analyze_url(url, filepath, filename):
 
     export_results(nvd, filepath, filename)
     print_exit_stats(nvd)
+
 
 def print_exit_stats(results):
     stats = { "lib_ver": [0, 0], "lib_unknown": [0, 0, 0], "framework": [0, 0]}
@@ -372,8 +375,24 @@ def user_interface():
     url = ""
     while not validators.url(url):
         url = input("Give me URL: ")
-    filepath = input("Give me path to output file: ")
-    filename = input("Give me output file name: ")
+
+    filepath = os.path.dirname(os.path.realpath(__file__))
+    filename = "fevdt_result-%s" % ('{0:%Y_%m_%d-%H_%M_%S}'.format(datetime.now()))
+
+    tmp = ""
+    while not os.path.isdir(tmp):
+        tmp = input("Give me path to output file [%s]: " % filepath)
+
+        if len(tmp) == 0:
+            break
+
+    if len(tmp) > 0:
+        filepath = tmp
+
+    tmp = input("Give me output file name [%s]: " % filename)
+    if len(tmp) > 0:
+        filename = tmp
+
     analyze_url(url, filepath, filename)
 
 
