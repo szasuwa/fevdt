@@ -260,8 +260,9 @@ def parse_nvd_page(page):
     return output
 
 
-def export_results(results, filename):
-    print("\nExporting results... (%s)" % filename)
+def export_results(results, filepath, filename):
+    filepath = filepath + "\\" + filename
+    print("\nExporting results... (%s)" % filepath)
 
     worksheets = {
         "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0",
@@ -290,7 +291,7 @@ def export_results(results, filename):
         for vulnerability in results["frameworks"][framework]:
             worksheets["frameworks"].append([framework] + vulnerability)
 
-    with xlsxwriter.Workbook(filename + '.xlsx') as workbook:
+    with xlsxwriter.Workbook(filepath + '.xlsx') as workbook:
         for worksheet_name in worksheets:
             worksheet = workbook.add_worksheet(worksheet_name)
 
@@ -301,7 +302,7 @@ def export_results(results, filename):
                 worksheet.autofilter(0, 0, len(worksheets[worksheet_name]) - 1, len(worksheets[worksheet_name][0]) - 1)
 
 
-def analyze_url(url):
+def analyze_url(url, filepath, filename):
     detected = get_site_script_list(url)
 
     detected = filter_script_list(detected)
@@ -325,7 +326,7 @@ def analyze_url(url):
         print("Fetching NVD for %s..." % framework)
         nvd["frameworks"][framework] = fetch_nvd_page(framework)
 
-    export_results(nvd, "result")
+    export_results(nvd, filepath, filename)
     print_exit_stats(nvd)
 
 def print_exit_stats(results):
@@ -371,7 +372,9 @@ def user_interface():
     url = ""
     while not validators.url(url):
         url = input("Give me URL: ")
-    analyze_url(url)
+    filepath = input("Give me path to output file: ")
+    filename = input("Give me output file name: ")
+    analyze_url(url, filepath, filename)
 
 
 user_interface()
