@@ -263,16 +263,16 @@ def parse_nvd_page(page):
 
 
 def export_results(results, filepath, filename):
-    output_path = "%s\%s.xls" % (filepath, filename)
+    output_path = "%s\%s.xlsx" % (filepath, filename)
     print("\nExporting results... (%s)" % output_path)
 
     worksheets = {
-        "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Published Date", "Severity 3.0",
+        "with_versions": [["Library Name", "Library Version", "CVE ID", "Description", "Publication Date", "Severity 3.0",
                            "Severity 2.0"]],
         "basic_unknown_versions": [
-            ["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+            ["Library Name", "CVE ID", "Description", "Publication Date", "Severity 3.0", "Severity 2.0"]],
         "extended_unknown_versions": [
-            ["Library Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]],
+            ["Library Name", "CVE ID", "Description", "Publication Date", "Severity 3.0", "Severity 2.0"]],
         "frameworks": [["Framework Name", "CVE ID", "Description", "Published Date", "Severity 3.0", "Severity 2.0"]]
     }
 
