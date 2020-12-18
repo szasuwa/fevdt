@@ -59,8 +59,9 @@ def get_site_script_list(url):
             continue
 
         script_url = lib.group()
-        if script_url.startswith("."):
+        if script_url.startswith(".") or script_url.startswith("/"):
             script_url = urllib.parse.urljoin(url, script_url)
+            print(script_url)
 
         output.append(script_url)
     print("%i libraries found" % len(output))
@@ -116,9 +117,25 @@ def extract_possible_names(url):
     return output
 
 
+def extract_version_from_content(url):
+    try:
+        page = requests.get(url)
+    except:
+        return []
+
+    comments = re.findall(r'/\*(?:.|[\r\n])*?\*/', page.text)
+
+    out = []
+    for comment in comments:
+        for i in re.finditer(r'(\d+(?:\.\d+)+)', comment):
+            out.append(i.group())
+
+    return out
+
+
 def extract_lib_data(url):
     primary_name = re.sub("([.-]min)|(\.js)|(\?\S+)", "", url.split("/")[-1])
-    versions = set(re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url))
+    versions = set(re.findall(r'(?<=[^\w])(\d+(?:\.\d+)+)', url) + extract_version_from_content(url))
 
     tmp = re.match(r'(\S+)-(\d+(?:\.\d+)*)', primary_name)
     if tmp is not None:
